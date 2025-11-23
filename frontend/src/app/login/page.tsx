@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -17,27 +18,30 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    // Note: This is a placeholder. You'll need to integrate with your actual auth endpoint
-    // For now, this simulates a login and sets a mock token
     try {
-      // TODO: Replace with actual API call to your authentication endpoint
-      // const response = await authApi.login(formData);
-      // localStorage.setItem('token', response.data.token);
-      // localStorage.setItem('role', response.data.role);
+      // Call your actual authentication endpoint
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/auth/login`,
+        formData
+      );
+
+      // Assuming your backend returns: { token: string, role: 'ADMIN' | 'SHOP' }
+      const { token, role } = response.data;
       
-      // Mock login for testing (remove in production)
-      if (formData.username && formData.password) {
-        // This is a temporary mock - replace with real auth
-        const mockToken = 'mock-jwt-token';
-        const mockRole = 'SHOP';
-        localStorage.setItem('token', mockToken);
-        localStorage.setItem('role', mockRole);
+      // Store token and role in localStorage
+      localStorage.setItem('token', token);
+      localStorage.setItem('role', role);
+
+      // Redirect based on role
+      if (role === 'ADMIN') {
+        router.push('/admin/dashboard');
+      } else if (role === 'SHOP') {
         router.push('/dashboard');
       } else {
-        setError('Please enter username and password');
+        setError('Invalid user role');
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -55,7 +59,21 @@ export default function LoginPage() {
       <div className="card" style={{ maxWidth: '400px', margin: '100px auto' }}>
         <h1 style={{ marginBottom: '24px', textAlign: 'center' }}>Login</h1>
         
-        {error && <div className="error" style={{ marginBottom: '16px' }}>{error}</div>}
+        {error && (
+          <div 
+            className="error" 
+            style={{ 
+              marginBottom: '16px',
+              padding: '12px',
+              backgroundColor: '#f8d7da',
+              border: '1px solid #f5c6cb',
+              borderRadius: '4px',
+              color: '#721c24'
+            }}
+          >
+            {error}
+          </div>
+        )}
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -67,6 +85,7 @@ export default function LoginPage() {
               value={formData.username}
               onChange={handleChange}
               required
+              autoComplete="username"
             />
           </div>
 
@@ -79,6 +98,7 @@ export default function LoginPage() {
               value={formData.password}
               onChange={handleChange}
               required
+              autoComplete="current-password"
             />
           </div>
 
@@ -92,11 +112,19 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p style={{ marginTop: '16px', textAlign: 'center', fontSize: '14px', color: '#666' }}>
-          Note: This is a mock login. Integrate with your actual authentication API.
-        </p>
+        <div style={{ 
+          marginTop: '20px', 
+          padding: '12px', 
+          backgroundColor: '#e7f3ff',
+          borderRadius: '4px',
+          fontSize: '13px',
+          color: '#004085'
+        }}>
+          <p style={{ margin: '0 0 8px 0', fontWeight: '600' }}>Test Accounts:</p>
+          <p style={{ margin: '0 0 4px 0' }}>• Admin: admin / admin123</p>
+          <p style={{ margin: 0 }}>• Shop Owner: shop1 / shop123</p>
+        </div>
       </div>
     </div>
   );
 }
-

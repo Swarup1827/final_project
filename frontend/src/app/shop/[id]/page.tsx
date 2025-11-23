@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { shopApi, productApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Shop } from '@/types/shop';
 import { Product } from '@/types/product';
 import ProductForm from '@/components/ProductForm';
-import ProductTable from '@/components/ProductTable';
 
 const deliveryOptionLabels: Record<string, string> = {
   NO_DELIVERY: 'No Delivery Service',
@@ -32,6 +31,7 @@ export default function ShopDetailsPage() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -95,6 +95,22 @@ export default function ShopDetailsPage() {
     loadProducts();
   };
 
+  // Filter products based on search query
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return products;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return products.filter((product) => {
+      return (
+        product.name.toLowerCase().includes(query) ||
+        (product.description && product.description.toLowerCase().includes(query)) ||
+        (product.category && product.category.toLowerCase().includes(query))
+      );
+    });
+  }, [products, searchQuery]);
+
   if (isLoading) {
     return <div className="container">Loading...</div>;
   }
@@ -150,7 +166,7 @@ export default function ShopDetailsPage() {
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2>Products</h2>
+          <h2>Products ({products.length})</h2>
           <button className="btn btn-primary" onClick={handleAddProduct}>
             + Add Product
           </button>
@@ -168,11 +184,104 @@ export default function ShopDetailsPage() {
           />
         )}
 
-        <ProductTable
-          products={products}
-          onEdit={handleEditProduct}
-          onDelete={handleDeleteProduct}
-        />
+        {/* Product Search Bar */}
+        {products.length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                placeholder="Search products by name, description, or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 40px 10px 12px',
+                  fontSize: '15px',
+                  border: '2px solid #ddd',
+                  borderRadius: '6px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#007bff';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#ddd';
+                }}
+              />
+              <span style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: '18px',
+                color: '#999'
+              }}>
+                🔍
+              </span>
+            </div>
+            {searchQuery && (
+              <p style={{ 
+                marginTop: '6px', 
+                fontSize: '13px', 
+                color: '#666' 
+              }}>
+                Found {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Products Table */}
+        {products.length === 0 ? (
+          <p>No products found. Add your first product!</p>
+        ) : filteredProducts.length === 0 ? (
+          <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+            <p style={{ margin: 0, color: '#666' }}>
+              No products found matching "{searchQuery}"
+            </p>
+          </div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Category</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProducts.map((product) => (
+                <tr key={product.id}>
+                  <td>{product.name}</td>
+                  <td>{product.description || '-'}</td>
+                  <td>${product.price.toFixed(2)}</td>
+                  <td>{product.stock}</td>
+                  <td>{product.category || '-'}</td>
+                  <td>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleEditProduct(product)}
+                      style={{ marginRight: '8px', padding: '6px 12px', fontSize: '14px' }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => handleDeleteProduct(product.id)}
+                      style={{ padding: '6px 12px', fontSize: '14px' }}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
