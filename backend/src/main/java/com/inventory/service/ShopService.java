@@ -47,6 +47,19 @@ public class ShopService {
     }
 
     /**
+     * Returns all shops in the system as ShopResponse DTOs.
+     * Used by admin endpoints.
+     *
+     * @return list of ShopResponse
+     */
+    public List<ShopResponse> getAllShops() {
+        List<Shop> shops = shopRepository.findAll();
+        return shops.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Checks if a user is the owner of a specific shop.
      * This is used for authorization checks before allowing operations on a shop.
      * 
