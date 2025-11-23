@@ -23,6 +23,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('token');
+      localStorage.removeItem('role');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -34,8 +35,11 @@ export const shopApi = {
   // Register a new shop
   register: (data: ShopRequest) => api.post<Shop>('/api/v1/shops', data),
   
-  // Get all shops owned by the current user
+  // Get all shops owned by the current user (SHOP OWNER only)
   getMyShops: () => api.get<Shop[]>('/api/v1/shops/mine'),
+  
+  // Get ALL shops in the system (ADMIN only) ← THIS LINE IS MISSING!
+  getAllShops: () => api.get<Shop[]>('/api/v1/shops'),
   
   // Get a specific shop by its ID
   getShop: (id: number) => api.get<Shop>(`/api/v1/shops/${id}`),
@@ -59,4 +63,3 @@ export const productApi = {
 };
 
 export default api;
-
