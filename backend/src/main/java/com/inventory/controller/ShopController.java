@@ -27,7 +27,7 @@ public class ShopController {
     public ResponseEntity<ShopResponse> registerShop(
             @Valid @RequestBody ShopRequest request,
             Authentication authentication) {
-        
+
         Long userId = jwtUtil.extractUserId(authentication);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -50,6 +50,19 @@ public class ShopController {
     }
 
     /**
+     * Endpoint to get ALL shops in the system (ADMIN only).
+     * GET /api/v1/shops
+     * 
+     * @return ResponseEntity with list of all shops
+     */
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ShopResponse>> getAllShops() {
+        List<ShopResponse> shops = shopService.getAllShops();
+        return ResponseEntity.ok(shops);
+    }
+
+    /**
      * Endpoint to get a specific shop by its ID.
      * GET /api/v1/shops/{id}
      * 
@@ -67,7 +80,7 @@ public class ShopController {
      * Endpoint to delete a single shop.
      * DELETE /api/v1/shops/{id}
      * 
-     * @param id The shop ID to delete from the URL path
+     * @param id             The shop ID to delete from the URL path
      * @param authentication Spring Security authentication object
      * @return ResponseEntity with no content (HTTP 204) on success
      */
@@ -76,7 +89,7 @@ public class ShopController {
     public ResponseEntity<Void> deleteShop(
             @PathVariable Long id,
             Authentication authentication) {
-        
+
         // Extract user ID from JWT token
         Long userId = jwtUtil.extractUserId(authentication);
         if (userId == null) {
@@ -85,7 +98,7 @@ public class ShopController {
 
         // Delete the shop (service layer will verify ownership)
         shopService.deleteShop(id, userId);
-        
+
         // Return HTTP 204 (No Content) to indicate successful deletion
         return ResponseEntity.noContent().build();
     }
@@ -94,7 +107,7 @@ public class ShopController {
      * Endpoint to delete multiple shops at once (bulk delete).
      * DELETE /api/v1/shops/bulk
      * 
-     * @param shopIds List of shop IDs to delete from the request body
+     * @param shopIds        List of shop IDs to delete from the request body
      * @param authentication Spring Security authentication object
      * @return ResponseEntity with no content (HTTP 204) on success
      */
@@ -103,7 +116,7 @@ public class ShopController {
     public ResponseEntity<Void> deleteShops(
             @RequestBody List<Long> shopIds,
             Authentication authentication) {
-        
+
         // Extract user ID from JWT token
         Long userId = jwtUtil.extractUserId(authentication);
         if (userId == null) {
@@ -112,9 +125,8 @@ public class ShopController {
 
         // Delete all specified shops (service layer will verify ownership for each)
         shopService.deleteShops(shopIds, userId);
-        
+
         // Return HTTP 204 (No Content) to indicate successful deletion
         return ResponseEntity.noContent().build();
     }
 }
-
