@@ -3,6 +3,8 @@ package com.inventory.service;
 import com.inventory.dto.ShopRequest;
 import com.inventory.dto.ShopResponse;
 import com.inventory.entity.Shop;
+import com.inventory.exception.ForbiddenException;
+import com.inventory.exception.NotFoundException;
 import com.inventory.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ public class ShopService {
         return mapToResponse(savedShop);
     }
 
+    @Transactional(readOnly = true)
     public List<ShopResponse> getShopsByOwner(Long ownerId) {
         List<Shop> shops = shopRepository.findByOwnerId(ownerId);
         return shops.stream()
@@ -40,9 +43,10 @@ public class ShopService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public ShopResponse getShopById(Long shopId) {
         Shop shop = shopRepository.findById(shopId)
-                .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
+                .orElseThrow(() -> new NotFoundException("Shop not found with id: " + shopId));
         return mapToResponse(shop);
     }
 
@@ -52,6 +56,7 @@ public class ShopService {
      *
      * @return list of ShopResponse
      */
+    @Transactional(readOnly = true)
     public List<ShopResponse> getAllShops() {
         List<Shop> shops = shopRepository.findAll();
         return shops.stream()
@@ -66,9 +71,13 @@ public class ShopService {
      * @param shopId The ID of the shop to check
      * @param ownerId The ID of the user to verify ownership
      * @return true if the user owns the shop, false otherwise
+     * @throws NotFoundException if the shop doesn't exist
      */
+    @Transactional(readOnly = true)
     public boolean isOwner(Long shopId, Long ownerId) {
-        return shopRepository.existsByIdAndOwnerId(shopId, ownerId);
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new NotFoundException("Shop not found with id: " + shopId));
+        return shop.getOwnerId().equals(ownerId);
     }
 
     /**
@@ -77,18 +86,19 @@ public class ShopService {
      * 
      * @param shopId The ID of the shop to delete
      * @param ownerId The ID of the user attempting to delete (for authorization)
-     * @throws RuntimeException if the shop is not found or user is not the owner
+     * @throws NotFoundException if the shop is not found
+     * @throws ForbiddenException if user is not the owner
      */
     @Transactional
     public void deleteShop(Long shopId, Long ownerId) {
-        // First, verify that the shop exists and the user owns it
-        if (!isOwner(shopId, ownerId)) {
-            throw new RuntimeException("You don't have permission to delete this shop");
-        }
-        
         // Find the shop entity
         Shop shop = shopRepository.findById(shopId)
-                .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
+                .orElseThrow(() -> new NotFoundException("Shop not found with id: " + shopId));
+        
+        // Verify that the user owns it
+        if (!shop.getOwnerId().equals(ownerId)) {
+            throw new ForbiddenException("You don't have permission to delete this shop");
+        }
         
         // Delete the shop (this will cascade delete all associated products due to orphanRemoval = true)
         shopRepository.delete(shop);
@@ -97,18 +107,36 @@ public class ShopService {
     /**
      * Deletes multiple shops at once.
      * This is useful for bulk operations like removing multiple subscriptions.
+     * Validates all shops first, then deletes them in a single transaction.
      * 
      * @param shopIds List of shop IDs to delete
      * @param ownerId The ID of the user attempting to delete (for authorization)
-     * @throws RuntimeException if any shop is not found or user is not the owner
+     * @throws NotFoundException if any shop is not found
+     * @throws ForbiddenException if user is not the owner of any shop
      */
     @Transactional
     public void deleteShops(List<Long> shopIds, Long ownerId) {
-        // Iterate through each shop ID and delete it
-        // Each deletion is validated to ensure the user owns the shop
-        for (Long shopId : shopIds) {
-            deleteShop(shopId, ownerId);
+        if (shopIds == null || shopIds.isEmpty()) {
+            throw new IllegalArgumentException("Shop IDs list cannot be empty");
         }
+
+        // First, validate all shops exist and user owns them
+        List<Shop> shopsToDelete = shopRepository.findAllById(shopIds);
+        
+        // Check if all shops were found
+        if (shopsToDelete.size() != shopIds.size()) {
+            throw new NotFoundException("One or more shops not found");
+        }
+        
+        // Check ownership for all shops
+        for (Shop shop : shopsToDelete) {
+            if (!shop.getOwnerId().equals(ownerId)) {
+                throw new ForbiddenException("You don't have permission to delete shop with id: " + shop.getId());
+            }
+        }
+        
+        // If all validations pass, delete all shops
+        shopRepository.deleteAll(shopsToDelete);
     }
 
     /**
@@ -132,4 +160,3 @@ public class ShopService {
         );
     }
 }
-

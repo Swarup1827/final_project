@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,6 +22,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Value("${app.dev-mode:false}")
+    private boolean devMode;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -30,8 +34,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             
-            // Development mode: Accept mock token for testing
-            if ("mock-jwt-token".equals(token)) {
+            // Development mode: Accept mock token for testing ONLY in dev mode
+            if (devMode && "mock-jwt-token".equals(token)) {
                 // Set up mock authentication for development
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         "1", // Mock user ID
@@ -58,6 +62,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     }
                 } catch (Exception e) {
                     // Invalid token, continue without authentication
+                    // Log the error in production
+                    logger.warn("JWT validation failed: " + e.getMessage());
                 }
             }
         }
@@ -65,4 +71,3 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
-

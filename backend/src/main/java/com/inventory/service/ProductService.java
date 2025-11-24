@@ -4,6 +4,8 @@ import com.inventory.dto.ProductRequest;
 import com.inventory.dto.ProductResponse;
 import com.inventory.entity.Product;
 import com.inventory.entity.Shop;
+import com.inventory.exception.ForbiddenException;
+import com.inventory.exception.NotFoundException;
 import com.inventory.repository.ProductRepository;
 import com.inventory.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +27,11 @@ public class ProductService {
     public ProductResponse addProduct(Long shopId, ProductRequest request, Long ownerId) {
         // Validate that the shop belongs to the owner
         if (!shopService.isOwner(shopId, ownerId)) {
-            throw new RuntimeException("You don't have permission to add products to this shop");
+            throw new ForbiddenException("You don't have permission to add products to this shop");
         }
 
         Shop shop = shopRepository.findById(shopId)
-                .orElseThrow(() -> new RuntimeException("Shop not found with id: " + shopId));
+                .orElseThrow(() -> new NotFoundException("Shop not found with id: " + shopId));
 
         Product product = new Product();
         product.setShop(shop);
@@ -43,7 +45,12 @@ public class ProductService {
         return mapToResponse(savedProduct);
     }
 
+    @Transactional(readOnly = true)
     public List<ProductResponse> getProductsByShop(Long shopId) {
+        // Verify shop exists
+        shopRepository.findById(shopId)
+                .orElseThrow(() -> new NotFoundException("Shop not found with id: " + shopId));
+        
         List<Product> products = productRepository.findByShopId(shopId);
         return products.stream()
                 .map(this::mapToResponse)
@@ -52,13 +59,15 @@ public class ProductService {
 
     @Transactional
     public ProductResponse updateProduct(Long productId, ProductRequest request, Long ownerId) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
-
-        // Validate that the product belongs to a shop owned by the user
-        if (!productRepository.existsByIdAndShopOwnerId(productId, ownerId)) {
-            throw new RuntimeException("You don't have permission to update this product");
-        }
+        Product product = productRepository.findByIdAndShopOwnerId(productId, ownerId)
+                .orElseThrow(() -> {
+                    // Check if product exists at all
+                    if (!productRepository.existsById(productId)) {
+                        return new NotFoundException("Product not found with id: " + productId);
+                    }
+                    // Product exists but user doesn't own it
+                    return new ForbiddenException("You don't have permission to update this product");
+                });
 
         product.setName(request.getName());
         product.setDescription(request.getDescription());
@@ -72,13 +81,15 @@ public class ProductService {
 
     @Transactional
     public void deleteProduct(Long productId, Long ownerId) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
-
-        // Validate that the product belongs to a shop owned by the user
-        if (!productRepository.existsByIdAndShopOwnerId(productId, ownerId)) {
-            throw new RuntimeException("You don't have permission to delete this product");
-        }
+        Product product = productRepository.findByIdAndShopOwnerId(productId, ownerId)
+                .orElseThrow(() -> {
+                    // Check if product exists at all
+                    if (!productRepository.existsById(productId)) {
+                        return new NotFoundException("Product not found with id: " + productId);
+                    }
+                    // Product exists but user doesn't own it
+                    return new ForbiddenException("You don't have permission to delete this product");
+                });
 
         productRepository.delete(product);
     }
@@ -95,4 +106,3 @@ public class ProductService {
         );
     }
 }
-

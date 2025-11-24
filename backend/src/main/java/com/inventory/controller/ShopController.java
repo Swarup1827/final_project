@@ -2,14 +2,18 @@ package com.inventory.controller;
 
 import com.inventory.dto.ShopRequest;
 import com.inventory.dto.ShopResponse;
+import com.inventory.exception.UnauthorizedException;
 import com.inventory.security.JwtUtil;
 import com.inventory.service.ShopService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/shops")
 @RequiredArgsConstructor
+@Validated
 public class ShopController {
 
     private final ShopService shopService;
@@ -28,11 +33,7 @@ public class ShopController {
             @Valid @RequestBody ShopRequest request,
             Authentication authentication) {
 
-        Long userId = jwtUtil.extractUserId(authentication);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
+        Long userId = extractUserId(authentication);
         ShopResponse response = shopService.registerShop(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -40,11 +41,7 @@ public class ShopController {
     @GetMapping("/mine")
     @PreAuthorize("hasRole('SHOP')")
     public ResponseEntity<List<ShopResponse>> getMyShops(Authentication authentication) {
-        Long userId = jwtUtil.extractUserId(authentication);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
+        Long userId = extractUserId(authentication);
         List<ShopResponse> shops = shopService.getShopsByOwner(userId);
         return ResponseEntity.ok(shops);
     }
@@ -90,16 +87,8 @@ public class ShopController {
             @PathVariable Long id,
             Authentication authentication) {
 
-        // Extract user ID from JWT token
-        Long userId = jwtUtil.extractUserId(authentication);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        // Delete the shop (service layer will verify ownership)
+        Long userId = extractUserId(authentication);
         shopService.deleteShop(id, userId);
-
-        // Return HTTP 204 (No Content) to indicate successful deletion
         return ResponseEntity.noContent().build();
     }
 
@@ -114,19 +103,24 @@ public class ShopController {
     @DeleteMapping("/bulk")
     @PreAuthorize("hasRole('SHOP')")
     public ResponseEntity<Void> deleteShops(
-            @RequestBody List<Long> shopIds,
+            @RequestBody @NotEmpty(message = "Shop IDs list cannot be empty") 
+            List<@NotNull(message = "Shop ID cannot be null") Long> shopIds,
             Authentication authentication) {
 
-        // Extract user ID from JWT token
+        Long userId = extractUserId(authentication);
+        shopService.deleteShops(shopIds, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Helper method to extract user ID from authentication.
+     * Throws UnauthorizedException if user ID cannot be extracted.
+     */
+    private Long extractUserId(Authentication authentication) {
         Long userId = jwtUtil.extractUserId(authentication);
         if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Unable to extract user ID from authentication token");
         }
-
-        // Delete all specified shops (service layer will verify ownership for each)
-        shopService.deleteShops(shopIds, userId);
-
-        // Return HTTP 204 (No Content) to indicate successful deletion
-        return ResponseEntity.noContent().build();
+        return userId;
     }
 }

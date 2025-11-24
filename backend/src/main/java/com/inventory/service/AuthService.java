@@ -3,11 +3,13 @@ package com.inventory.service;
 import com.inventory.dto.LoginRequest;
 import com.inventory.dto.LoginResponse;
 import com.inventory.entity.User;
+import com.inventory.exception.UnauthorizedException;
 import com.inventory.repository.UserRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -19,6 +21,7 @@ import java.util.Date;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${jwt.secret}")
     private String secret;
@@ -29,11 +32,11 @@ public class AuthService {
     public LoginResponse login(LoginRequest request) {
         // Find user by username
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+                .orElseThrow(() -> new UnauthorizedException("Invalid username or password"));
 
-        // Check password (in production, use BCrypt password encoder)
-        if (!user.getPassword().equals(request.getPassword())) {
-            throw new RuntimeException("Invalid username or password");
+        // Check password using BCrypt
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new UnauthorizedException("Invalid username or password");
         }
 
         // Generate JWT token

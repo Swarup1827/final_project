@@ -2,6 +2,7 @@ package com.inventory.controller;
 
 import com.inventory.dto.ProductRequest;
 import com.inventory.dto.ProductResponse;
+import com.inventory.exception.UnauthorizedException;
 import com.inventory.security.JwtUtil;
 import com.inventory.service.ProductService;
 import jakarta.validation.Valid;
@@ -29,11 +30,7 @@ public class ProductController {
             @Valid @RequestBody ProductRequest request,
             Authentication authentication) {
         
-        Long userId = jwtUtil.extractUserId(authentication);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
+        Long userId = extractUserId(authentication);
         ProductResponse response = productService.addProduct(shopId, request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -52,11 +49,7 @@ public class ProductController {
             @Valid @RequestBody ProductRequest request,
             Authentication authentication) {
         
-        Long userId = jwtUtil.extractUserId(authentication);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
+        Long userId = extractUserId(authentication);
         ProductResponse response = productService.updateProduct(id, request, userId);
         return ResponseEntity.ok(response);
     }
@@ -67,13 +60,20 @@ public class ProductController {
             @PathVariable Long id,
             Authentication authentication) {
         
-        Long userId = jwtUtil.extractUserId(authentication);
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
+        Long userId = extractUserId(authentication);
         productService.deleteProduct(id, userId);
         return ResponseEntity.noContent().build();
     }
-}
 
+    /**
+     * Helper method to extract user ID from authentication.
+     * Throws UnauthorizedException if user ID cannot be extracted.
+     */
+    private Long extractUserId(Authentication authentication) {
+        Long userId = jwtUtil.extractUserId(authentication);
+        if (userId == null) {
+            throw new UnauthorizedException("Unable to extract user ID from authentication token");
+        }
+        return userId;
+    }
+}
