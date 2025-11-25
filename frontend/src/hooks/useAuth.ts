@@ -10,8 +10,9 @@ export const useAuth = () => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
       const role = localStorage.getItem('role');
-      
-      if (token && role === 'SHOP') {
+
+      // Accept both ADMIN and SHOP roles
+      if (token && (role === 'SHOP' || role === 'ADMIN')) {
         setIsAuthenticated(true);
       } else {
         setIsAuthenticated(false);

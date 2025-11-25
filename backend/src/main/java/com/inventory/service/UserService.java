@@ -1,12 +1,10 @@
-
-
-// 3. UserService.java
 package com.inventory.service;
 
 import com.inventory.dto.UserRegistrationRequest;
 import com.inventory.dto.UserResponse;
 import com.inventory.entity.User;
 import com.inventory.exception.BadRequestException;
+import com.inventory.exception.NotFoundException;
 import com.inventory.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,14 +48,14 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new BadRequestException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
         return mapToResponse(user);
     }
 
     @Transactional
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new BadRequestException("User not found");
+            throw new NotFoundException("User not found with id: " + id);
         }
         userRepository.deleteById(id);
     }
@@ -65,8 +63,8 @@ public class UserService {
     @Transactional
     public UserResponse updatePassword(Long id, String newPassword) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new BadRequestException("User not found"));
-        
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
+
         user.setPassword(passwordEncoder.encode(newPassword));
         User updatedUser = userRepository.save(user);
         return mapToResponse(updatedUser);
@@ -76,4 +74,3 @@ public class UserService {
         return new UserResponse(user.getId(), user.getUsername(), user.getRole());
     }
 }
-

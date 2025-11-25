@@ -19,8 +19,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
                 ex.getMessage(),
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
@@ -29,8 +28,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
                 ex.getMessage(),
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
@@ -39,8 +37,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
                 ex.getMessage(),
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
@@ -49,18 +46,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 ex.getMessage(),
-                LocalDateTime.now()
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-    }
-
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex) {
-        ErrorResponse error = new ErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                ex.getMessage(),
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
@@ -72,13 +58,12 @@ public class GlobalExceptionHandler {
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);
         });
-        
+
         ValidationErrorResponse response = new ValidationErrorResponse(
                 HttpStatus.BAD_REQUEST.value(),
                 "Validation failed",
                 LocalDateTime.now(),
-                errors
-        );
+                errors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
@@ -94,23 +79,46 @@ public class GlobalExceptionHandler {
             this.timestamp = timestamp;
         }
 
-        public int getStatus() { return status; }
-        public void setStatus(int status) { this.status = status; }
-        public String getMessage() { return message; }
-        public void setMessage(String message) { this.message = message; }
-        public LocalDateTime getTimestamp() { return timestamp; }
-        public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+        public int getStatus() {
+            return status;
+        }
+
+        public void setStatus(int status) {
+            this.status = status;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public void setMessage(String message) {
+            this.message = message;
+        }
+
+        public LocalDateTime getTimestamp() {
+            return timestamp;
+        }
+
+        public void setTimestamp(LocalDateTime timestamp) {
+            this.timestamp = timestamp;
+        }
     }
 
     public static class ValidationErrorResponse extends ErrorResponse {
         private Map<String, String> errors;
 
-        public ValidationErrorResponse(int status, String message, LocalDateTime timestamp, Map<String, String> errors) {
+        public ValidationErrorResponse(int status, String message, LocalDateTime timestamp,
+                Map<String, String> errors) {
             super(status, message, timestamp);
             this.errors = errors;
         }
 
-        public Map<String, String> getErrors() { return errors; }
-        public void setErrors(Map<String, String> errors) { this.errors = errors; }
+        public Map<String, String> getErrors() {
+            return errors;
+        }
+
+        public void setErrors(Map<String, String> errors) {
+            this.errors = errors;
+        }
     }
 }

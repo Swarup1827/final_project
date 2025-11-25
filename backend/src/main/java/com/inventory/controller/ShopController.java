@@ -2,13 +2,11 @@ package com.inventory.controller;
 
 import com.inventory.dto.ShopRequest;
 import com.inventory.dto.ShopResponse;
-import com.inventory.exception.UnauthorizedException;
 import com.inventory.security.JwtUtil;
 import com.inventory.service.ShopService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,12 +18,15 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/shops")
-@RequiredArgsConstructor
 @Validated
-public class ShopController {
+public class ShopController extends BaseController {
 
     private final ShopService shopService;
-    private final JwtUtil jwtUtil;
+
+    public ShopController(JwtUtil jwtUtil, ShopService shopService) {
+        super(jwtUtil);
+        this.shopService = shopService;
+    }
 
     @PostMapping
     @PreAuthorize("hasRole('SHOP')")
@@ -103,24 +104,11 @@ public class ShopController {
     @DeleteMapping("/bulk")
     @PreAuthorize("hasRole('SHOP')")
     public ResponseEntity<Void> deleteShops(
-            @RequestBody @NotEmpty(message = "Shop IDs list cannot be empty") 
-            List<@NotNull(message = "Shop ID cannot be null") Long> shopIds,
+            @RequestBody @NotEmpty(message = "Shop IDs list cannot be empty") List<@NotNull(message = "Shop ID cannot be null") Long> shopIds,
             Authentication authentication) {
 
         Long userId = extractUserId(authentication);
         shopService.deleteShops(shopIds, userId);
         return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Helper method to extract user ID from authentication.
-     * Throws UnauthorizedException if user ID cannot be extracted.
-     */
-    private Long extractUserId(Authentication authentication) {
-        Long userId = jwtUtil.extractUserId(authentication);
-        if (userId == null) {
-            throw new UnauthorizedException("Unable to extract user ID from authentication token");
-        }
-        return userId;
     }
 }

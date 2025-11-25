@@ -1,9 +1,10 @@
 package com.inventory.security;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -17,15 +18,14 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Value("${cors.allowed-origins:http://localhost:3000}")
     private String[] allowedOrigins;
@@ -44,17 +44,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        
+
                         // User management endpoints (ADMIN only)
                         .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
-                        
+
                         // Shop endpoints
-                        .requestMatchers("/api/v1/shops").hasRole("ADMIN") // Get all shops
-                        .requestMatchers("/api/v1/shops/**").hasAnyRole("SHOP", "ADMIN")
-                        
+                        .requestMatchers(HttpMethod.GET, "/api/v1/shops").hasRole("ADMIN") // Get all shops (ADMIN only)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/shops").hasAnyRole("SHOP", "ADMIN") // Create shop
+                                                                                                       // (SHOP/ADMIN)
+                        .requestMatchers("/api/v1/shops/**").hasAnyRole("SHOP", "ADMIN") // All other shop endpoints
+
                         // Product endpoints
                         .requestMatchers("/api/v1/products/**").hasAnyRole("SHOP", "ADMIN")
-                        
+
                         // All other requests must be authenticated
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

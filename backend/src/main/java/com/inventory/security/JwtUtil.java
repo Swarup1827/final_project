@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 
 @Component
 public class JwtUtil {
@@ -33,57 +32,31 @@ public class JwtUtil {
     }
 
     public Long extractUserId(Authentication authentication) {
-        if (authentication == null || authentication.getPrincipal() == null) {
+        if (authentication == null || authentication.getCredentials() == null) {
             return null;
         }
-        
-        // Development mode: Handle mock token
-        if (authentication.getCredentials() instanceof String) {
-            String token = (String) authentication.getCredentials();
-            if ("mock-jwt-token".equals(token)) {
-                // For mock token, user ID is stored in authentication name
-                try {
-                    return Long.parseLong(authentication.getName());
-                } catch (NumberFormatException e) {
-                    return 1L; // Default mock user ID
-                }
-            }
-        }
-        
-        // Assuming JWT contains userId in claims
-        // Adjust based on your JWT structure
-        if (authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
-            // If using UserDetails, extract from there
-            String username = ((org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal()).getUsername();
-            // You may need to load user from database to get ID
-            // For now, assuming username is the user ID or you have a custom UserDetails implementation
-        }
-        
-        // If JWT token is in the authentication, extract from there
+
+        // Extract from JWT token in credentials
         if (authentication.getCredentials() instanceof String) {
             String token = (String) authentication.getCredentials();
             try {
                 Claims claims = extractClaims(token);
-                return claims.get("userId", Long.class);
+                // userId is stored as Integer in JWT, not Long
+                Integer userIdInt = claims.get("userId", Integer.class);
+                return userIdInt != null ? userIdInt.longValue() : null;
             } catch (Exception e) {
-                // Invalid token, try fallback
+                return null;
             }
         }
-        
-        // Fallback: try to get from authentication name/principal
-        // This is a simplified version - adjust based on your auth setup
-        try {
-            return Long.parseLong(authentication.getName());
-        } catch (NumberFormatException e) {
-            return null;
-        }
+
+        return null;
     }
 
     public String extractRole(Authentication authentication) {
         if (authentication == null) {
             return null;
         }
-        
+
         // Extract role from authorities
         return authentication.getAuthorities().stream()
                 .findFirst()
@@ -91,4 +64,3 @@ public class JwtUtil {
                 .orElse(null);
     }
 }
-

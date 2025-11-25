@@ -1,4 +1,3 @@
-// 4. UserController.java
 package com.inventory.controller;
 
 import com.inventory.dto.UserRegistrationRequest;
