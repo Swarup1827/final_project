@@ -19,6 +19,7 @@ export default function RegisterShopPage() {
     phone: '',
     openHours: '',
     deliveryOption: deliveryOptions[0].value,
+    ownerId: '',
   });
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -66,6 +67,8 @@ export default function RegisterShopPage() {
     return null;
   }
 
+  const isAdmin = typeof window !== 'undefined' && localStorage.getItem('role') === 'ADMIN';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -78,18 +81,24 @@ export default function RegisterShopPage() {
     }
 
     try {
-      const payload = {
+      const payload: any = {
         ...formData,
         deliveryOption: formData.deliveryOption as DeliveryOption,
         latitude,
         longitude,
       };
 
+      // Only include ownerId if it's provided and user is admin
+      if (isAdmin && formData.ownerId) {
+        payload.ownerId = parseInt(formData.ownerId);
+      } else {
+        delete payload.ownerId;
+      }
+
       await shopApi.register(payload);
 
       // Redirect based on role
-      const role = localStorage.getItem('role');
-      if (role === 'ADMIN') {
+      if (isAdmin) {
         router.push('/admin/dashboard');
       } else {
         router.push('/dashboard');
@@ -184,6 +193,23 @@ export default function RegisterShopPage() {
               Choose how customers can receive deliveries from your shop.
             </small>
           </div>
+
+          {isAdmin && (
+            <div className="form-group" style={{ backgroundColor: '#fff3cd', padding: '12px', borderRadius: '4px', border: '1px solid #ffc107' }}>
+              <label htmlFor="ownerId">Owner ID (Admin Only)</label>
+              <input
+                type="number"
+                id="ownerId"
+                name="ownerId"
+                value={formData.ownerId}
+                onChange={handleChange}
+                placeholder="Enter User ID to assign shop to"
+              />
+              <small style={{ color: '#856404' }}>
+                Leave blank to assign to yourself. Enter a User ID to assign this shop to another user.
+              </small>
+            </div>
+          )}
 
           <div className="form-group">
             <label>Current Location (captured automatically)</label>

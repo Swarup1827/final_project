@@ -270,6 +270,7 @@ export default function ShopDetailsPage() {
       <div className="card">
         <h2 style={{ marginBottom: '16px' }}>Shop Information</h2>
         <div style={{ display: 'grid', gap: '12px' }}>
+          {isAdmin && <p><strong>Owner ID:</strong> {shop.ownerId}</p>}
           <p><strong>Address:</strong> {shop.address}</p>
           <p><strong>Phone:</strong> {shop.phone}</p>
           <p><strong>Open Hours:</strong> {shop.openHours}</p>
