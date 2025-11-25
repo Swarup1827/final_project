@@ -42,10 +42,20 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/api/v1/shops").hasRole("ADMIN") // Admin endpoint
-                        .requestMatchers("/api/v1/shops/**").hasAnyRole("SHOP", "ADMIN") // Both can access
+                        
+                        // User management endpoints (ADMIN only)
+                        .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
+                        
+                        // Shop endpoints
+                        .requestMatchers("/api/v1/shops").hasRole("ADMIN") // Get all shops
+                        .requestMatchers("/api/v1/shops/**").hasAnyRole("SHOP", "ADMIN")
+                        
+                        // Product endpoints
                         .requestMatchers("/api/v1/products/**").hasAnyRole("SHOP", "ADMIN")
+                        
+                        // All other requests must be authenticated
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

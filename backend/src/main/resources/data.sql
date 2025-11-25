@@ -1,3 +1,5 @@
-INSERT INTO users (username, email, password, role, created_at) VALUES 
-('admin', 'admin@example.com', '$2a$10$slYQmyNdGzin7olVN3p5Be7DY8YEOVM3d9b0jPfQeframU2EW30m', 'ADMIN', NOW()),
-('shop1', 'shop1@example.com', '$2a$10$slYQmyNdGzin7olVN3p5Be7DY8YEOVM3d9b0jPfQeframU2EW30m', 'SHOP', NOW());
+-- Correct version matching your User entity
+INSERT INTO users (username, password, role) VALUES 
+('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'ADMIN'),
+('shop1', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'SHOP')
+ON CONFLICT (username) DO NOTHING;
