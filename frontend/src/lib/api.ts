@@ -34,19 +34,19 @@ api.interceptors.response.use(
 export const shopApi = {
   // Register a new shop
   register: (data: ShopRequest) => api.post<Shop>('/api/v1/shops', data),
-  
+
   // Get all shops owned by the current user (SHOP OWNER only)
   getMyShops: () => api.get<Shop[]>('/api/v1/shops/mine'),
-  
+
   // Get ALL shops in the system (ADMIN only) ← THIS LINE IS MISSING!
   getAllShops: () => api.get<Shop[]>('/api/v1/shops'),
-  
+
   // Get a specific shop by its ID
   getShop: (id: number) => api.get<Shop>(`/api/v1/shops/${id}`),
-  
+
   // Delete a single shop by its ID
   delete: (id: number) => api.delete(`/api/v1/shops/${id}`),
-  
+
   // Delete multiple shops at once (bulk delete)
   deleteMultiple: (shopIds: number[]) => api.delete('/api/v1/shops/bulk', { data: shopIds }),
 };
@@ -60,6 +60,7 @@ export const productApi = {
   update: (id: number, data: ProductRequest) =>
     api.put<Product>(`/api/v1/products/${id}`, data),
   delete: (id: number) => api.delete(`/api/v1/products/${id}`),
+  deleteMultiple: (productIds: number[]) => api.delete('/api/v1/products/bulk', { data: productIds }),
 };
 
 export default api;

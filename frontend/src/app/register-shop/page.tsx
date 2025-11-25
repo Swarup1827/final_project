@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { shopApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { DeliveryOption } from '@/types/shop';
 
 const deliveryOptions = [
   { value: 'NO_DELIVERY', label: 'No Delivery Service' },
@@ -79,12 +80,20 @@ export default function RegisterShopPage() {
     try {
       const payload = {
         ...formData,
+        deliveryOption: formData.deliveryOption as DeliveryOption,
         latitude,
         longitude,
       };
 
       await shopApi.register(payload);
-      router.push('/dashboard');
+
+      // Redirect based on role
+      const role = localStorage.getItem('role');
+      if (role === 'ADMIN') {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to register shop');
     } finally {
@@ -103,9 +112,9 @@ export default function RegisterShopPage() {
     <div className="container">
       <div className="card" style={{ maxWidth: '600px', margin: '40px auto' }}>
         <h1 style={{ marginBottom: '24px' }}>Register Your Shop</h1>
-        
+
         {error && <div className="error" style={{ marginBottom: '16px' }}>{error}</div>}
-        
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="name">Shop Name *</label>

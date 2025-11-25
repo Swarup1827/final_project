@@ -24,7 +24,7 @@ const formatCoordinate = (value?: number) => {
 export default function ShopDetailsPage() {
   const params = useParams();
   const shopId = params?.id ? Number(params.id) : null;
-  
+
   const [shop, setShop] = useState<Shop | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +35,10 @@ export default function ShopDetailsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
 
+  const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     if (isAuthenticated && shopId) {
       loadShopDetails();
@@ -44,7 +48,7 @@ export default function ShopDetailsPage() {
 
   const loadShopDetails = async () => {
     if (!shopId) return;
-    
+
     try {
       const response = await shopApi.getShop(shopId);
       setShop(response.data);
@@ -57,10 +61,11 @@ export default function ShopDetailsPage() {
 
   const loadProducts = async () => {
     if (!shopId) return;
-    
+
     try {
       const response = await productApi.getByShop(shopId);
       setProducts(response.data);
+      setSelectedProducts(new Set()); // Clear selection on reload
     } catch (err: any) {
       setError('Failed to load products');
     }
@@ -76,16 +81,43 @@ export default function ShopDetailsPage() {
     setShowProductForm(true);
   };
 
-  const handleDeleteProduct = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this product?')) {
-      return;
-    }
+  const handleBulkDelete = () => {
+    if (selectedProducts.size === 0) return;
+    setShowDeleteConfirmation(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    setDeleting(true);
     try {
-      await productApi.delete(id);
+      await productApi.deleteMultiple(Array.from(selectedProducts));
+      setShowDeleteConfirmation(false);
       loadProducts();
     } catch (err: any) {
-      setError('Failed to delete product');
+      setError('Failed to delete products');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirmation(false);
+  };
+
+  const toggleProductSelection = (productId: number) => {
+    const newSelection = new Set(selectedProducts);
+    if (newSelection.has(productId)) {
+      newSelection.delete(productId);
+    } else {
+      newSelection.add(productId);
+    }
+    setSelectedProducts(newSelection);
+  };
+
+  const toggleAllSelection = () => {
+    if (selectedProducts.size === filteredProducts.length) {
+      setSelectedProducts(new Set());
+    } else {
+      setSelectedProducts(new Set(filteredProducts.map(p => p.id)));
     }
   };
 
@@ -128,9 +160,97 @@ export default function ShopDetailsPage() {
       <div className="container">
         <div className="card">
           <h1>Shop Not Found</h1>
-          <button className="btn btn-primary" onClick={() => router.push('/dashboard')}>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              if (isAuthenticated && localStorage.getItem('role') === 'ADMIN') {
+                router.push('/admin/dashboard');
+              } else {
+                router.push('/dashboard');
+              }
+            }}
+          >
             Back to Dashboard
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  const handleBack = () => {
+    if (isAuthenticated && localStorage.getItem('role') === 'ADMIN') {
+      router.push('/admin/dashboard');
+    } else {
+      router.push('/dashboard');
+    }
+  };
+
+  const isAdmin = typeof window !== 'undefined' && localStorage.getItem('role') === 'ADMIN';
+
+  if (showDeleteConfirmation) {
+    const productsToDelete = products.filter(p => selectedProducts.has(p.id));
+
+    return (
+      <div className="container">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h1>Confirm Deletion</h1>
+          <button className="btn btn-secondary" onClick={handleCancelDelete}>
+            Back
+          </button>
+        </div>
+
+        <div className="card">
+          <h2 style={{ marginBottom: '16px', color: '#dc3545' }}>
+            Are you sure you want to delete these products?
+          </h2>
+
+          <p style={{ marginBottom: '20px', color: '#666' }}>
+            The following {productsToDelete.length} product(s) will be permanently deleted.
+            This action cannot be undone.
+          </p>
+
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{ marginBottom: '12px' }}>Products to be deleted:</h3>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {productsToDelete.map((product) => (
+                <li
+                  key={product.id}
+                  style={{
+                    padding: '12px',
+                    marginBottom: '8px',
+                    backgroundColor: '#fff3cd',
+                    border: '1px solid #ffc107',
+                    borderRadius: '4px',
+                  }}
+                >
+                  <strong>{product.name}</strong>
+                  <br />
+                  <span style={{ color: '#666', fontSize: '14px' }}>
+                    Price: ${product.price.toFixed(2)} • Stock: {product.stock}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              className="btn btn-danger"
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+              style={{ flex: 1 }}
+            >
+              {deleting ? 'Deleting...' : 'Yes, Delete These Products'}
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={handleCancelDelete}
+              disabled={deleting}
+              style={{ flex: 1 }}
+            >
+              No, Go Back
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -140,7 +260,7 @@ export default function ShopDetailsPage() {
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1>{shop.name}</h1>
-        <button className="btn btn-secondary" onClick={() => router.push('/dashboard')}>
+        <button className="btn btn-secondary" onClick={handleBack}>
           Back to Dashboard
         </button>
       </div>
@@ -167,9 +287,18 @@ export default function ShopDetailsPage() {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2>Products ({products.length})</h2>
-          <button className="btn btn-primary" onClick={handleAddProduct}>
-            + Add Product
-          </button>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {!isAdmin && selectedProducts.size > 0 && (
+              <button className="btn btn-danger" onClick={handleBulkDelete}>
+                Delete Selected ({selectedProducts.size})
+              </button>
+            )}
+            {!isAdmin && (
+              <button className="btn btn-primary" onClick={handleAddProduct}>
+                + Add Product
+              </button>
+            )}
+          </div>
         </div>
 
         {showProductForm && (
@@ -221,10 +350,10 @@ export default function ShopDetailsPage() {
               </span>
             </div>
             {searchQuery && (
-              <p style={{ 
-                marginTop: '6px', 
-                fontSize: '13px', 
-                color: '#666' 
+              <p style={{
+                marginTop: '6px',
+                fontSize: '13px',
+                color: '#666'
               }}>
                 Found {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}
               </p>
@@ -234,7 +363,7 @@ export default function ShopDetailsPage() {
 
         {/* Products Table */}
         {products.length === 0 ? (
-          <p>No products found. Add your first product!</p>
+          <p>No products found. {isAdmin ? '' : 'Add your first product!'}</p>
         ) : filteredProducts.length === 0 ? (
           <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
             <p style={{ margin: 0, color: '#666' }}>
@@ -245,38 +374,55 @@ export default function ShopDetailsPage() {
           <table>
             <thead>
               <tr>
+                {!isAdmin && (
+                  <th style={{ width: '40px' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedProducts.size === filteredProducts.length && filteredProducts.length > 0}
+                      onChange={toggleAllSelection}
+                    />
+                  </th>
+                )}
                 <th>Name</th>
                 <th>Description</th>
                 <th>Price</th>
                 <th>Stock</th>
                 <th>Category</th>
-                <th>Actions</th>
+                {!isAdmin && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {filteredProducts.map((product) => (
                 <tr key={product.id}>
+                  {!isAdmin && (
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.has(product.id)}
+                        onChange={() => toggleProductSelection(product.id)}
+                      />
+                    </td>
+                  )}
                   <td>{product.name}</td>
                   <td>{product.description || '-'}</td>
                   <td>${product.price.toFixed(2)}</td>
                   <td>{product.stock}</td>
                   <td>{product.category || '-'}</td>
-                  <td>
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleEditProduct(product)}
-                      style={{ marginRight: '8px', padding: '6px 12px', fontSize: '14px' }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="btn btn-danger"
-                      onClick={() => handleDeleteProduct(product.id)}
-                      style={{ padding: '6px 12px', fontSize: '14px' }}
-                    >
-                      Delete
-                    </button>
-                  </td>
+                  {!isAdmin && (
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditProduct(product);
+                        }}
+                        style={{ padding: '6px 12px', fontSize: '14px' }}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

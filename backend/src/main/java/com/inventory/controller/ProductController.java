@@ -37,7 +37,7 @@ public class ProductController extends BaseController {
     }
 
     @GetMapping("/shops/{shopId}/products")
-    @PreAuthorize("hasRole('SHOP')")
+    @PreAuthorize("hasAnyRole('SHOP', 'ADMIN')")
     public ResponseEntity<List<ProductResponse>> getProductsByShop(@PathVariable Long shopId) {
         List<ProductResponse> products = productService.getProductsByShop(shopId);
         return ResponseEntity.ok(products);
@@ -63,6 +63,17 @@ public class ProductController extends BaseController {
 
         Long userId = extractUserId(authentication);
         productService.deleteProduct(id, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/products/bulk")
+    @PreAuthorize("hasRole('SHOP')")
+    public ResponseEntity<Void> deleteProducts(
+            @RequestBody List<Long> productIds,
+            Authentication authentication) {
+
+        Long userId = extractUserId(authentication);
+        productService.deleteProducts(productIds, userId);
         return ResponseEntity.noContent().build();
     }
 }

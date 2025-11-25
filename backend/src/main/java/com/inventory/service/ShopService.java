@@ -30,7 +30,7 @@ public class ShopService {
         shop.setLongitude(request.getLongitude());
         shop.setOpenHours(request.getOpenHours());
         shop.setDeliveryOption(request.getDeliveryOption());
-        
+
         Shop savedShop = shopRepository.save(shop);
         return mapToResponse(savedShop);
     }
@@ -68,7 +68,7 @@ public class ShopService {
      * Checks if a user is the owner of a specific shop.
      * This is used for authorization checks before allowing operations on a shop.
      * 
-     * @param shopId The ID of the shop to check
+     * @param shopId  The ID of the shop to check
      * @param ownerId The ID of the user to verify ownership
      * @return true if the user owns the shop, false otherwise
      * @throws NotFoundException if the shop doesn't exist
@@ -82,25 +82,28 @@ public class ShopService {
 
     /**
      * Deletes a single shop by its ID.
-     * This method also deletes all products associated with the shop (cascade delete).
+     * This method also deletes all products associated with the shop (cascade
+     * delete).
      * 
-     * @param shopId The ID of the shop to delete
+     * @param shopId  The ID of the shop to delete
      * @param ownerId The ID of the user attempting to delete (for authorization)
-     * @throws NotFoundException if the shop is not found
-     * @throws ForbiddenException if user is not the owner
+     * @param isAdmin Whether the user is an admin (bypasses ownership check)
+     * @throws NotFoundException  if the shop is not found
+     * @throws ForbiddenException if user is not the owner and not admin
      */
     @Transactional
-    public void deleteShop(Long shopId, Long ownerId) {
+    public void deleteShop(Long shopId, Long ownerId, boolean isAdmin) {
         // Find the shop entity
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new NotFoundException("Shop not found with id: " + shopId));
-        
-        // Verify that the user owns it
-        if (!shop.getOwnerId().equals(ownerId)) {
+
+        // Verify that the user owns it OR is an admin
+        if (!isAdmin && !shop.getOwnerId().equals(ownerId)) {
             throw new ForbiddenException("You don't have permission to delete this shop");
         }
-        
-        // Delete the shop (this will cascade delete all associated products due to orphanRemoval = true)
+
+        // Delete the shop (this will cascade delete all associated products due to
+        // orphanRemoval = true)
         shopRepository.delete(shop);
     }
 
@@ -111,30 +114,33 @@ public class ShopService {
      * 
      * @param shopIds List of shop IDs to delete
      * @param ownerId The ID of the user attempting to delete (for authorization)
-     * @throws NotFoundException if any shop is not found
-     * @throws ForbiddenException if user is not the owner of any shop
+     * @param isAdmin Whether the user is an admin (bypasses ownership check)
+     * @throws NotFoundException  if any shop is not found
+     * @throws ForbiddenException if user is not the owner of any shop and not admin
      */
     @Transactional
-    public void deleteShops(List<Long> shopIds, Long ownerId) {
+    public void deleteShops(List<Long> shopIds, Long ownerId, boolean isAdmin) {
         if (shopIds == null || shopIds.isEmpty()) {
             throw new IllegalArgumentException("Shop IDs list cannot be empty");
         }
 
         // First, validate all shops exist and user owns them
         List<Shop> shopsToDelete = shopRepository.findAllById(shopIds);
-        
+
         // Check if all shops were found
         if (shopsToDelete.size() != shopIds.size()) {
             throw new NotFoundException("One or more shops not found");
         }
-        
-        // Check ownership for all shops
-        for (Shop shop : shopsToDelete) {
-            if (!shop.getOwnerId().equals(ownerId)) {
-                throw new ForbiddenException("You don't have permission to delete shop with id: " + shop.getId());
+
+        // Check ownership for all shops if not admin
+        if (!isAdmin) {
+            for (Shop shop : shopsToDelete) {
+                if (!shop.getOwnerId().equals(ownerId)) {
+                    throw new ForbiddenException("You don't have permission to delete shop with id: " + shop.getId());
+                }
             }
         }
-        
+
         // If all validations pass, delete all shops
         shopRepository.deleteAll(shopsToDelete);
     }
@@ -148,14 +154,14 @@ public class ShopService {
      */
     private ShopResponse mapToResponse(Shop shop) {
         return new ShopResponse(
-                shop.getId(),           // Shop's unique identifier
-                shop.getName(),         // Shop name
-                shop.getAddress(),      // Shop address
-                shop.getPhone(),        // Shop phone number
-                shop.getOwnerId(),      // ID of the shop owner
-                shop.getLatitude(),     // Latitude coordinate
-                shop.getLongitude(),    // Longitude coordinate
-                shop.getOpenHours(),    // Open hours text
+                shop.getId(), // Shop's unique identifier
+                shop.getName(), // Shop name
+                shop.getAddress(), // Shop address
+                shop.getPhone(), // Shop phone number
+                shop.getOwnerId(), // ID of the shop owner
+                shop.getLatitude(), // Latitude coordinate
+                shop.getLongitude(), // Longitude coordinate
+                shop.getOpenHours(), // Open hours text
                 shop.getDeliveryOption()// Delivery option selected
         );
     }

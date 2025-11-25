@@ -29,13 +29,20 @@ public class ShopController extends BaseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('SHOP')")
+    @PreAuthorize("hasAnyRole('SHOP', 'ADMIN')")
     public ResponseEntity<ShopResponse> registerShop(
             @Valid @RequestBody ShopRequest request,
             Authentication authentication) {
 
         Long userId = extractUserId(authentication);
-        ShopResponse response = shopService.registerShop(request, userId);
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        // If admin and ownerId is provided, use it. Otherwise use the authenticated
+        // user's ID.
+        Long ownerId = (isAdmin && request.getOwnerId() != null) ? request.getOwnerId() : userId;
+
+        ShopResponse response = shopService.registerShop(request, ownerId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -68,7 +75,7 @@ public class ShopController extends BaseController {
      * @return ResponseEntity with shop data
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('SHOP')")
+    @PreAuthorize("hasAnyRole('SHOP', 'ADMIN')")
     public ResponseEntity<ShopResponse> getShop(@PathVariable Long id) {
         ShopResponse shop = shopService.getShopById(id);
         return ResponseEntity.ok(shop);
@@ -83,13 +90,16 @@ public class ShopController extends BaseController {
      * @return ResponseEntity with no content (HTTP 204) on success
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SHOP')")
+    @PreAuthorize("hasAnyRole('SHOP', 'ADMIN')")
     public ResponseEntity<Void> deleteShop(
             @PathVariable Long id,
             Authentication authentication) {
 
         Long userId = extractUserId(authentication);
-        shopService.deleteShop(id, userId);
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        shopService.deleteShop(id, userId, isAdmin);
         return ResponseEntity.noContent().build();
     }
 
@@ -102,13 +112,16 @@ public class ShopController extends BaseController {
      * @return ResponseEntity with no content (HTTP 204) on success
      */
     @DeleteMapping("/bulk")
-    @PreAuthorize("hasRole('SHOP')")
+    @PreAuthorize("hasAnyRole('SHOP', 'ADMIN')")
     public ResponseEntity<Void> deleteShops(
             @RequestBody @NotEmpty(message = "Shop IDs list cannot be empty") List<@NotNull(message = "Shop ID cannot be null") Long> shopIds,
             Authentication authentication) {
 
         Long userId = extractUserId(authentication);
-        shopService.deleteShops(shopIds, userId);
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        shopService.deleteShops(shopIds, userId, isAdmin);
         return ResponseEntity.noContent().build();
     }
 }

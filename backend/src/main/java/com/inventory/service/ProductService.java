@@ -50,7 +50,7 @@ public class ProductService {
         // Verify shop exists
         shopRepository.findById(shopId)
                 .orElseThrow(() -> new NotFoundException("Shop not found with id: " + shopId));
-        
+
         List<Product> products = productRepository.findByShopId(shopId);
         return products.stream()
                 .map(this::mapToResponse)
@@ -94,6 +94,28 @@ public class ProductService {
         productRepository.delete(product);
     }
 
+    @Transactional
+    public void deleteProducts(List<Long> productIds, Long ownerId) {
+        if (productIds == null || productIds.isEmpty()) {
+            throw new IllegalArgumentException("Product IDs list cannot be empty");
+        }
+
+        List<Product> products = productRepository.findAllById(productIds);
+
+        if (products.size() != productIds.size()) {
+            throw new NotFoundException("One or more products not found");
+        }
+
+        // Verify ownership for all products
+        for (Product product : products) {
+            if (!product.getShop().getOwnerId().equals(ownerId)) {
+                throw new ForbiddenException("You don't have permission to delete product: " + product.getName());
+            }
+        }
+
+        productRepository.deleteAll(products);
+    }
+
     private ProductResponse mapToResponse(Product product) {
         return new ProductResponse(
                 product.getId(),
@@ -102,7 +124,6 @@ public class ProductService {
                 product.getDescription(),
                 product.getPrice(),
                 product.getStock(),
-                product.getCategory()
-        );
+                product.getCategory());
     }
 }

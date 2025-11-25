@@ -6,13 +6,13 @@ import lombok.Data;
 
 @Data
 public class ShopRequest {
-    
+
     @NotBlank(message = "Shop name is required")
     private String name;
-    
+
     @NotBlank(message = "Address is required")
     private String address;
-    
+
     @NotBlank(message = "Phone is required")
     private String phone;
 
@@ -27,5 +27,10 @@ public class ShopRequest {
 
     @NotBlank(message = "Delivery option is required")
     private String deliveryOption;
-}
 
+    /**
+     * Optional: ID of the owner to assign this shop to.
+     * Only used if the requester is an ADMIN.
+     */
+    private Long ownerId;
+}
